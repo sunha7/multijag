@@ -1,6 +1,6 @@
 [package]
 name = "multijag"
-version = "0.1.0"
+version = "0.2.0"
 description = "OSRS launcher that keeps multiple Jagex accounts signed in at once"
 edition = "2021"
 

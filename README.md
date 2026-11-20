@@ -15,6 +15,23 @@ npm run build    # installers in src-tauri/target/release/bundle
 
 Pushing a `v*` tag (or running the workflow by hand) builds all three platforms in GitHub Actions.
 
+On Windows, `build-windows.bat` does the install and build in one step.
+
+### Distributing your own builds
+
+Rust embeds source paths in the binary, including your Windows username (e.g. `C:\Users\<you>\.cargo\registry\...`). If you plan to distribute binaries built on your machine and don't want your username in them, rebuild the Rust code with `--remap-path-prefix`. `build-windows.bat` already does this for you; to do it by hand, set it in `src-tauri/.cargo/config.toml`:
+
+```toml
+[target.'cfg(all(windows, target_env = "msvc"))']
+rustflags = [
+  '--remap-path-prefix=C:\Users\<you>=~',
+  '--remap-path-prefix=F:\path\to\project=.',
+  '-Clink-arg=/PDBALTPATH:multijag.pdb',
+]
+```
+
+Then check the result, e.g. `findstr /m /i <you> src-tauri\target\release\multijag.exe` should print nothing. Binaries built by the GitHub Actions workflow don't contain your username.
+
 ## Use
 
 - **Add Jagex account** opens a Jagex sign-in window. Every account gets its own isolated webview

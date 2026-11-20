@@ -62,6 +62,8 @@
   details { margin-top:18px; color:var(--muted); }
   details .row { display:flex; gap:8px; align-items:center; margin:8px 0; }
   details code { flex:1; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
+  input.args { flex:1; min-width:0; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:12px Consolas, monospace; }
+  input.args:focus { outline:none; border-color:var(--gold); }
   select { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; }
 </style>
 </head>
@@ -72,6 +74,7 @@
     <option value="runelite">RuneLite</option>
     <option value="official">Official client</option>
   </select>
+  <button id="import" title="Import a RuneLite credentials.properties file into encrypted storage">Import credentials</button>
   <button class="primary" id="add">+ Add Jagex account</button>
 </header>
 <div id="update" hidden></div>
@@ -81,8 +84,10 @@
   <details>
     <summary>Client paths</summary>
     <div class="row">RuneLite <code id="path-runelite"></code><button data-browse="runelite">Change</button></div>
+    <div class="row">Options <input class="args" id="args-runelite" data-args="runelite" spellcheck="false" placeholder='e.g. --profile "Alt" --debug -J-Xmx2g'></div>
     <div class="note">RuneLite is a third party client, for more information see the <a href="#" data-link="https://legal.jagex.com/docs/terms/eula#id-5.-other-third-party-services-integration-and-third-party-software-acknowledgments">EULA</a>.</div>
     <div class="row">Official <code id="path-official"></code><button data-browse="official">Change</button></div>
+    <div class="row">Options <input class="args" id="args-official" data-args="official" spellcheck="false" placeholder="Launch options for the official client"></div>
   </details>
 </main>
 <footer>

@@ -32,6 +32,8 @@ function saveRevealed() {
     // not critical
   }
 }
+// Characters whose per-character launch options editor is open (in memory only).
+const openOpts = new Set();
 // Hand-drawn gold eye. `off` adds a slash through it.
 const EYE_SVG = (off) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <path d="M1.8 12C4.4 7.2 8 5 12 5s7.6 2.2 10.2 7c-2.6 4.8-6.2 7-10.2 7S4.4 16.8 1.8 12z" stroke="var(--gold)" stroke-width="1.8"/>
@@ -133,6 +135,11 @@ function render(state) {
   $('#client').value = state.settings.client;
   $('#path-runelite').textContent = state.settings.paths.runelite || '(not set)';
   $('#path-official').textContent = state.settings.paths.official || '(not set)';
+  // Don't clobber text the user is typing when a state event arrives.
+  for (const k of ['runelite', 'official']) {
+    const box = $(`#args-${k}`);
+    if (document.activeElement !== box) box.value = (state.settings.args || {})[k] || '';
+  }
 
   const list = $('#accounts');
   list.replaceChildren();
@@ -142,6 +149,7 @@ function render(state) {
   }
   for (const a of state.accounts) {
     const refreshBtn = el('button', { title: 'Refresh characters' }, '↻');
+    if (a.imported) refreshBtn.hidden = true;
     refreshBtn.addEventListener('click', () => run(`Refreshing ${a.name}…`, () => api.refreshCharacters(a.id), refreshBtn));
     const removeBtn = el('button', { class: 'danger', title: 'Remove account' }, 'Remove');
     let armed = null;
@@ -199,6 +207,32 @@ function render(state) {
       const m = membershipOf(c);
       const launchBtn = el('button', { class: 'primary' }, 'Play');
       launchBtn.addEventListener('click', () => run(`Launching ${c.displayName || 'character'}…`, () => api.launch(a.id, c.accountId), launchBtn));
+      let rmBtn = '';
+      if (a.imported) {
+        rmBtn = el('button', { class: 'eye danger', title: 'Remove this imported character', style: 'color:var(--muted)' }, '✕');
+        let armedRm = null;
+        rmBtn.addEventListener('click', () => {
+          if (armedRm) {
+            clearTimeout(armedRm);
+            run('Removing…', () => api.removeImportedCharacter(c.accountId), rmBtn);
+            return;
+          }
+          rmBtn.textContent = 'Sure?';
+          armedRm = setTimeout(() => { armedRm = null; rmBtn.textContent = '✕'; }, 3000);
+        });
+      }
+      const client = state.settings.client;
+      const clientName = client === 'official' ? 'official client' : 'RuneLite';
+      const own = (c.args || {})[client] || '';
+      const gear = el('button', {
+        class: 'eye',
+        style: own ? 'color:var(--gold)' : 'color:var(--muted)',
+        title: own ? `Custom ${clientName} options set (click to edit)` : `Set ${clientName} launch options for this character`,
+      }, '⚙');
+      gear.addEventListener('click', () => {
+        openOpts.has(c.accountId) ? openOpts.delete(c.accountId) : openOpts.add(c.accountId);
+        render(current);
+      });
       const rowGrip = el('span', { class: 'grip', title: 'Drag to reorder' }, '☰');
       const hideBtn = el('button', { class: 'eye', title: c.hidden ? 'Unhide this character' : 'Hide this character' }, eye(c.hidden));
       hideBtn.addEventListener('click', () => run('', () => api.setHidden(a.id, c.accountId, !c.hidden), hideBtn));
@@ -208,18 +242,34 @@ function render(state) {
           el('span', { class: 'char-name' }, c.displayName || el('span', { class: 'muted' }, '(no name set)')),
           el('span', { class: m.member ? 'member' : 'muted small' }, m.text),
           n ? el('span', { class: 'badge' }, `● running${n > 1 ? ` ×${n}` : ''}`) : '',
+          rmBtn,
+          gear,
           launchBtn,
       );
       makeSortable(row, rowGrip, 'char', c.accountId, a.id);
       body.append(row);
+      if (openOpts.has(c.accountId)) {
+        const global = (state.settings.args || {})[client] || '';
+        const box = el('input', {
+          class: 'args',
+          spellcheck: 'false',
+          placeholder: global ? `Using global: ${global}` : 'Using global (none). Type to override',
+        });
+        box.value = own;
+        box.addEventListener('change', () => run('', () => api.setCharacterArgs(a.id, c.accountId, client, box.value)));
+        body.append(el('div', { class: 'char optrow' }, el('span', { class: 'muted small' }, `${clientName} options`), box));
+      }
     }
     list.append(card);
   }
 }
 
+$('#import').addEventListener('click', (e) => run('Importing…', () => api.importCredentials(), e.currentTarget));
 $('#add').addEventListener('click', (e) => run('Waiting for sign-in in the popup window…', () => api.addAccount(), e.currentTarget));
 $('#client').addEventListener('change', (e) => api.setClient(e.target.value));
 document.querySelectorAll('[data-browse]').forEach((b) => b.addEventListener('click', () => api.browseClient(b.dataset.browse)));
+
+document.querySelectorAll('[data-args]').forEach((i) => i.addEventListener('change', () => run('', () => api.setArgs(i.dataset.args, i.value))));
 
 api.onState(render);
 api.state().then(render);
@@ -254,7 +304,7 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   run('', () => api.openLink(link.dataset.link));
 });
-$('#feedback').addEventListener('click', () => run('', () => api.openLink('https://github.com/skeldoor/multijag/issues')));
+$('#feedback').addEventListener('click', () => run('', () => api.openLink('https://github.com/sunha7/multijag/issues')));
 checkForUpdate(false);
 
 // ---- instant styled tooltips for anything with a title ----

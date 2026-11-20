@@ -7,6 +7,8 @@ const call = (cmd, args) => invoke(cmd, args).catch((e) => { throw new Error(typ
 window.api = {
   state: () => call('get_state'),
   addAccount: () => call('add_account'),
+  importCredentials: () => call('import_credentials'),
+  removeImportedCharacter: (characterId) => call('remove_imported_character', { characterId }),
   removeAccount: (id) => call('remove_account', { id }),
   refreshCharacters: (id) => call('refresh_characters', { id }),
   launch: (id, characterId) => call('launch', { id, characterId }),
@@ -16,6 +18,8 @@ window.api = {
   checkUpdate: () => call('check_update'),
   openLink: (url) => call('open_link', { url }),
   setClient: (client) => call('set_client', { client }),
+  setCharacterArgs: (id, characterId, client, args) => call('set_character_args', { id, characterId, client, args }),
+  setArgs: (client, args) => call('set_args', { client, args }),
   browseClient: (client) => call('browse_client', { client }),
   onState: (fn) => listen('state', (e) => fn(e.payload)),
 };

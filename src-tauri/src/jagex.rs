@@ -44,6 +44,10 @@ pub struct Character {
     /// Set by the user to tuck uninteresting characters away.
     #[serde(default)]
     pub hidden: bool,
+    /// Per-client launch options for this character (client id -> options). When non-empty for
+    /// the client being launched, these replace the global options for that client.
+    #[serde(default)]
+    pub args: HashMap<String, String>,
     /// Everything else Jagex sends per character (membership info etc.), kept verbatim.
     #[serde(flatten, default)]
     pub extra: serde_json::Map<String, serde_json::Value>,

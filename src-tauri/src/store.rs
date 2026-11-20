@@ -18,6 +18,14 @@ use crate::jagex::{Character, Tokens};
 pub struct Secrets {
     pub tokens: Option<Tokens>,
     pub session_id: Option<String>,
+    /// For accounts imported from a credentials.properties file: the JX_* values to hand to the
+    /// client at launch (JX_SESSION_ID plus JX_ACCESS_TOKEN / JX_REFRESH_TOKEN when present).
+    #[serde(default)]
+    pub cred_env: HashMap<String, String>,
+    /// For the single "Imported credentials" group: character id -> JX_* values to hand to the
+    /// client for that character. Supersedes `cred_env`, which is only read to migrate old data.
+    #[serde(default)]
+    pub imported: HashMap<String, HashMap<String, String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -30,12 +38,19 @@ pub struct Account {
     pub characters: Vec<Character>,
     #[serde(default)]
     pub secrets: Option<String>,
+    /// True for accounts created from an imported credentials.properties file. These have a
+    /// fixed session and cannot be refreshed; re-import a fresh file when it expires.
+    #[serde(default)]
+    pub imported: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
     pub client: String,
     pub paths: HashMap<String, String>,
+    /// Extra command-line launch options per client (e.g. RuneLite's `--profile`, `-J-Xmx2g`).
+    #[serde(default)]
+    pub args: HashMap<String, String>,
 }
 
 pub struct Store {
@@ -90,8 +105,10 @@ impl Store {
             .unwrap_or_default();
         let mut paths = default_paths();
         let mut client = "runelite".to_string();
+        let mut args = HashMap::new();
         if let Some(s) = file.settings {
             client = s.client;
+            args = s.args;
             // Keep saved paths, but let detected defaults fill any that are empty.
             for (k, v) in s.paths {
                 if !v.is_empty() {
@@ -99,7 +116,7 @@ impl Store {
                 }
             }
         }
-        Store { settings: Settings { client, paths }, accounts: file.accounts }
+        Store { settings: Settings { client, paths, args }, accounts: file.accounts }
     }
 
     pub fn save(&self, dir: &Path) {
